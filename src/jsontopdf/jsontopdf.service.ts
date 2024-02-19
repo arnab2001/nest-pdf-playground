@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { createWriteStream } from 'fs';
 import * as PDFKit from 'pdfkit';
-import { jsonToTable } from './jsonToTable';
+import axios from 'axios';
 
 interface JsonTable {
   headers: string[];
@@ -16,7 +16,12 @@ interface HeaderDetails {
 
 @Injectable()
 export class JsonToPdfService {
-  convertJsonToPdf(json: JsonTable, outputPath: string, headerDetails?: HeaderDetails): void {
+  async convertJsonToPdf(
+    json: JsonTable,
+    outputPath: string,
+    headerDetails?: HeaderDetails,
+    imageUrls?: string[],
+  ): Promise<void> {
     const doc = new PDFKit({
       size: 'A4',
       layout: 'portrait',
@@ -28,67 +33,183 @@ export class JsonToPdfService {
     const tableWidth = 500;
     const colWidth = tableWidth / json.headers.length;
     const rowHeight = 20;
-    const maxRowsPerPage = 25; // Adjust this value based on your needs
+    const maxRowsPerPage = 25;
+    const imageWidth = 200;
+    const imageHeight = 200;
 
-    // Calculate the height of the header
     const headerHeight = headerDetails ? 70 : 0;
+
     const renderHeader = () => {
       if (headerDetails) {
-        doc.fontSize(12).text(`Creation Date: ${headerDetails.creationDate || ''}`, 50, 30);
+        doc
+          .fontSize(12)
+          .text(`Creation Date: ${headerDetails.creationDate || ''}`, 50, 30);
         doc.fontSize(16).text(`Name: ${headerDetails.name || ''}`, 50, 50);
-        doc.fontSize(14).text(`Lab Name: ${headerDetails.labName || ''}`, 50, 70);
+        doc
+          .fontSize(14)
+          .text(`Lab Name: ${headerDetails.labName || ''}`, 50, 70);
       }
     };
-    // Center-align the table
+
+    renderHeader();
+
     const tableX = (doc.page.width - tableWidth) / 2;
-    renderHeader(); 
-    // Function to add a new page
-    const addNewPage = () => {
-      doc.addPage();
-      // Render header details on every new page
-      renderColumnHeaders(); // Render column headers on every new page
-      currentRow = 0;
-      currentPage++;
+
+    // Function to calculate the space required for images
+    const calculateImageSpace = (imageCount: number): number => {
+      const imageGridCols = 2; // Number of columns in the image grid
+      const imageGridSpacing = 10; // Spacing between images in the grid
+      const rowsNeeded = Math.ceil(imageCount / imageGridCols);
+      return rowsNeeded * (imageHeight + imageGridSpacing);
     };
 
-    // Function to render header details
-    
-
-    // Function to render column headers
-    const renderColumnHeaders = () => {
-      json.headers.forEach((header, i) => {
-        doc.text(header, tableX + i * colWidth, 50 + headerHeight).rect(tableX + i * colWidth, 50 + headerHeight, colWidth, rowHeight).stroke();
-      });
-    };
+    const imageSpace = calculateImageSpace(imageUrls.length);
 
     let currentRow = 0;
-    let currentPage = 1;
+    let currentPage = 0;
 
-    // Initial rendering of header and column headers on the first page
-    renderHeader();
-    renderColumnHeaders();
+    // Check if images are provided
+    if (imageUrls && imageUrls.length > 0) {
+      // Start rendering images on a new page if needed
+      if (doc.y + imageSpace > doc.page.height) {
+        doc.addPage();
+        currentRow = 0;
+        currentPage++;
+      }
 
-    // Function to check remaining space on the page
+      // for (let i = 0; i < imageUrls.length; i++) {
+      //   const imageUrl = imageUrls[i];
+
+      //   try {
+      //     const response = await axios.get(imageUrl, {
+      //       responseType: 'arraybuffer',
+      //     });
+      //     const imageBuffer = Buffer.from(response.data, 'binary');
+
+      //     const gridCol = i % 2; // Assuming 2 columns in the image grid
+      //     const gridRow = Math.floor(i / 2);
+
+      //     doc.image(
+      //       imageBuffer,
+      //       tableX + gridCol * (imageWidth + 10), // Adjusted x-coordinate with spacing
+      //       doc.y + gridRow * (imageHeight + 10) + 10, // Adjusted y-coordinate with spacing
+      //       {
+      //         fit: [imageWidth, imageHeight],
+      //         align: 'center',
+      //         valign: 'bottom',
+      //       },
+      //     );
+      //   } catch (error) {
+      //     console.error(`Error fetching image ${imageUrl}: ${error.message}`);
+      //   }
+
+      //   // Check if more images on next page
+      //   if (i === imageUrls.length - 1 || (i + 1) % (2 * maxRowsPerPage) === 0) {
+      //     doc.addPage();
+      //     currentRow = 0;
+      //     currentPage++;
+      //   }
+      // }
+
+
+      for (let i = 0; i < imageUrls.length; i++) {
+        const imageUrl = imageUrls[i];
+      
+        try {
+          const response = await axios.get(imageUrl, {
+            responseType: 'arraybuffer',
+          });
+          const imageBuffer = Buffer.from(response.data, 'binary');
+      
+          const gridCol = i % 2; // Assuming 2 columns in the image grid
+          const gridRow = Math.floor(i / 2);
+      
+          const imageX = tableX + (doc.page.width - tableWidth) / 2 + // Center the image horizontally
+            gridCol * (imageWidth + 10); // Adjusted x-coordinate with spacing
+      
+          const imageY = doc.y + gridRow * (imageHeight + 10) + 10; // Adjusted y-coordinate with spacing
+      
+          doc.image(
+            imageBuffer,
+            imageX,
+            imageY,
+            {
+              fit: [imageWidth, imageHeight],
+              align: 'center', // Center align the image
+              valign: 'bottom',
+            },
+          );
+        } catch (error) {
+          console.error(`Error fetching image ${imageUrl}: ${error.message}`);
+        }
+      
+        // Check if more images on the next page
+        if (i === imageUrls.length - 1 || (i + 1) % (2 * maxRowsPerPage) === 0) {
+          doc.addPage();
+          currentRow = 0;
+          currentPage++;
+        }
+      }
+
+      // Move to the space below the images
+      doc.moveDown((imageSpace / doc.page.height) * doc.page.height);
+    }
+
+    const renderColumnHeaders = (isFirstPage: boolean) => {
+      if (!isFirstPage) {
+        json.headers.forEach((header, i) => {
+          doc
+            .text(header, tableX + i * colWidth, 50 + headerHeight)
+            .rect(tableX + i * colWidth, 50 + headerHeight, colWidth, rowHeight)
+            .stroke();
+        });
+      } else {
+        json.headers.forEach((header, i) => {
+          doc
+            .text(header, tableX + i * colWidth, 50 + headerHeight)
+            .rect(tableX + i * colWidth, 50 + headerHeight, colWidth, rowHeight)
+            .stroke();
+        });
+      }
+    };
+    // Render table
+  
+
+    renderColumnHeaders(false);
     const checkRemainingSpace = () => {
-      const remainingSpace = doc.page.height - (50 + headerHeight + currentRow * rowHeight);
+      const remainingSpace = 
+        doc.page.height - (50 + headerHeight + currentRow * rowHeight);
       return remainingSpace >= rowHeight;
     };
 
-    // Add the table content
     json.rows.forEach((row, rowIndex) => {
       if (currentRow >= maxRowsPerPage || !checkRemainingSpace()) {
-        addNewPage();
+        doc.addPage();
+
+        renderColumnHeaders(false);
+        currentRow = 0;
+        currentPage++;
       }
+
       row.forEach((cell, colIndex) => {
         doc
-          .text(cell.toString(), tableX + colIndex * colWidth, 50 + headerHeight + (currentRow + 1) * rowHeight)
-          .rect(tableX + colIndex * colWidth, 50 + headerHeight + (currentRow + 1) * rowHeight, colWidth, rowHeight)
+          .text(
+            cell.toString(),
+            tableX + colIndex * colWidth,
+            50 + headerHeight + (currentRow + 1) * rowHeight,
+          )
+          .rect(
+            tableX + colIndex * colWidth,
+            50 + headerHeight + (currentRow + 1) * rowHeight,
+            colWidth,
+            rowHeight,
+          )
           .stroke();
       });
+
       currentRow++;
     });
 
-    // Finalize the PDF document
     doc.end();
   }
 }

@@ -26,6 +26,7 @@
     "@nestjs/platform-express": "^10.3.1",
     "@types/css-font-loading-module": "^0.0.13",
     "@types/pdfmake": "^0.2.9",
+    "axios": "^1.6.7",
     "class-validator": "^0.14.1",
     "nestjs": "^0.0.1",
     "pdf-lib": "^1.17.1",
@@ -33,6 +34,7 @@
     "pdfkit": "^0.14.0",
     "pdfmake": "^0.2.9",
     "reflect-metadata": "^0.2.1",
+    "request": "^2.88.2",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
