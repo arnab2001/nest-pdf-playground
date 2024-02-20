@@ -73,6 +73,9 @@ devDependencies:
   '@types/node':
     specifier: ^20.11.16
     version: 20.11.16
+  '@types/pdfkit':
+    specifier: ^0.13.4
+    version: 0.13.4
   '@types/supertest':
     specifier: ^6.0.2
     version: 6.0.2
@@ -1344,17 +1347,16 @@ packages:
     dependencies:
       undici-types: 5.26.5
 
-  /@types/pdfkit@0.13.3:
-    resolution: {integrity: sha512-CN0prCV0n1HssBg34izaTAcWRmq0916SnsmpTsRqIxlbdS6QkDYsZ5/cm6/a5V2MO3501fbZHkv9DLjJCh9W4Q==}
+  /@types/pdfkit@0.13.4:
+    resolution: {integrity: sha512-ixGNDHYJCCKuamY305wbfYSphZ2WPe8FPkjn8oF4fHV+PgPV4V+hecPh2VOS2h4RNtpSB3zQcR4sCpNvvrEb1A==}
     dependencies:
       '@types/node': 20.11.16
-    dev: false
 
   /@types/pdfmake@0.2.9:
     resolution: {integrity: sha512-uLDKEH3A1fnCd/qXYJB2OnKkkjfdC1oc6HYVYBKxsyN1UsJL/8Lt67T6WFo3umkL+5Zd74M2IYcOf5kwwd9x9w==}
     dependencies:
       '@types/node': 20.11.16
-      '@types/pdfkit': 0.13.3
+      '@types/pdfkit': 0.13.4
     dev: false
 
   /@types/qs@6.9.11:
