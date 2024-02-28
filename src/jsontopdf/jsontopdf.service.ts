@@ -23,7 +23,7 @@ export class JsonToPdfService {
     json: JsonTable,
     outputPath: string,
     headerDetails?: HeaderDetails,
-    imageUrls?: string[],
+    imageUrls?: string[], 
   ): Promise<void> {
     const doc = new PDFKit({
       size: 'A4',
@@ -32,7 +32,7 @@ export class JsonToPdfService {
       //set bottom margin:
       margin: 20,
     });
-
+ 
     doc.pipe(createWriteStream(outputPath));
 
     const tableWidth = 500;
@@ -80,7 +80,7 @@ export class JsonToPdfService {
 
           doc
             .fontSize(12)
-            .text(
+            .text( 
               `Creation Date: ${headerDetails.creationDate || ''}`,
               100,
               30,
